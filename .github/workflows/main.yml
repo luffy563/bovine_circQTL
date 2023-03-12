@@ -17,3 +17,5 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: Auto update markdown TOC
+        env:
+          GITHUB_TOKEN: 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

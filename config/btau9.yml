@@ -1,0 +1,12 @@
+name: btau9
+tools:
+  bwa: /home/liuhongfei/miniconda3/envs/py2/bin/bwa
+  hisat2: /software/hisat2-2.1.0/hisat2
+  stringtie: /home/liuhongfei/miniconda3/envs/py2/bin/stringtie
+  samtools: /home/liuhongfei/miniconda3/envs/py2/bin/samtools
+
+reference:
+  fasta: /home/data1/liuhongfei/circQTL/input/RNA_seq/genome/Bos_taurus.ARS-UCD1.2.dna.toplevel.fa
+  gtf: /home/data1/liuhongfei/circQTL/input/RNA_seq/genome/Bos_taurus.ARS-UCD1.2.101.gtf
+  bwa_index: /home/data1/liuhongfei/circQTL/input/RNA_seq/bwa_index/Bos_taurus.ARS-UCD1.2.dna.toplevel.fa
+  hisat_index: /home/data1/liuhongfei/circQTL/input/RNA_seq/ht2_index/btau9_tran

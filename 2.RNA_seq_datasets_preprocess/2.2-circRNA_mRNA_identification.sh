@@ -41,6 +41,13 @@ BOS_REF_BED=${BTA_REFERENCE}/genome/bos_ref.txt
 ARS_UCD_GENOME=${BTA_REFERENCE}/genome/Bos_taurus.ARS-UCD1.2.dna.toplevel.fa
 ARS_UCD_GTF=${BTA_REFERENCE}/annotation/Bos_taurus.ARS-UCD1.2.101.gtf
 
+### Building HISAT2 index for bovine
+mkdir -p ${BTA_REFERENCE}/ht2_index
+$SCRIPTS_DIR/extract_splice_sites.py $ARS_UCD_GTF >${BTA_REFERENCE}/ht2_index/btau9.ss 
+$SCRIPTS_DIR/extract_exons.py $ARS_UCD_GTF >${BTA_REFERENCE}/ht2_index/btau9.exon 
+$hisat2_build -p $THREADS --ss ${BTA_REFERENCE}/ht2_index/btau9.ss --exon ${BTA_REFERENCE}/ht2_index/btau9.exon \
+$ARS_UCD_GENOME ${BTA_REFERENCE}/ht2_index/btau9_tran 
+
 ######################################
 # Identification by CircMarker
 ######################################
@@ -85,13 +92,6 @@ $CIRCexplorer2 annotate -r $BOS_REF_BED -g $ARS_UCD_GENOME \
 -b $SUB_OUTPUT_DIR/CircMarker/${i}/circ_candidates_convert.bed -o $SUB_OUTPUT_DIR/CircMarker/${i}/circularRNA_known.txt
 done
 
-## Building HISAT2 index for bovine
-mkdir -p ${BTA_REFERENCE}/ht2_index
-$SCRIPTS_DIR/extract_splice_sites.py $ARS_UCD_GTF >${BTA_REFERENCE}/ht2_index/btau9.ss 
-$SCRIPTS_DIR/extract_exons.py $ARS_UCD_GTF >${BTA_REFERENCE}/ht2_index/btau9.exon 
-$hisat2_build -p $THREADS --ss ${BTA_REFERENCE}/ht2_index/btau9.ss --exon ${BTA_REFERENCE}/ht2_index/btau9.exon \
-$ARS_UCD_GENOME ${BTA_REFERENCE}/ht2_index/btau9_tran 
-
 
 ### CircMarker quantification results calibrated by CIRIquant quantification
 # Rscript $SCRIPTS_DIR/prep_quant.r -a CM -s 1
@@ -114,7 +114,7 @@ $ARS_UCD_GENOME ${BTA_REFERENCE}/ht2_index/btau9_tran
 ######################################	  
 # CIRI2 prediction
 
-# indexing
+# BWA indexing
 $bwa index $ARS_UCD_GENOME
 # Alignment and identification for PE
 cat $PE_RNA_SEQ_META | while read name len
@@ -163,20 +163,45 @@ $CIRCexplorer2 annotate -r $BOS_REF_BED -g $ARS_UCD_GENOME \
 -b $SUB_OUTPUT_DIR/CIRI2/${i}/circ_candidates_convert.bed -o $SUB_OUTPUT_DIR/CIRI2/${i}/circularRNA_known.txt
 done
 
-### CIRI2 CIRIquant quantification (Optional)
-# Rscript $SCRIPTS_DIR/prep_quant.r -a CIRI2 -s 1
+### CIRI2 CIRIquant quantification (Required for Paired-end mRNA identification and quantity)
+Rscript $SCRIPTS_DIR/prep_quant.r -a CIRI2 -s 1
 
-# cat $PE_RNA_SEQ_META | while read i len
-# do
-# $CIRIquant -t $THREADS \
-          # -1 $INPUT_DIR/${i}_1.fastq.gz \
-          # -2 $INPUT_DIR/${i}_2.fastq.gz \
-          # --config $CONFIG_DIR/btau9.yml \
-          # -o $SUB_OUTPUT_DIR/CIRI2/$i \
-          # -p ${i}_quant \
-		  # --tool CIRI2 \
-		  # --circ $SUB_OUTPUT_DIR/CIRI2/$i/out.ciri
-# done
+cat $PE_RNA_SEQ_META | while read i len
+do
+$CIRIquant -t $THREADS \
+          -1 $INPUT_DIR/${i}_1.fastq.gz \
+          -2 $INPUT_DIR/${i}_2.fastq.gz \
+          --config $CONFIG_DIR/btau9.yml \
+          -o $SUB_OUTPUT_DIR/CIRI2/$i \
+          -p ${i}_quant \
+		  --tool CIRI2 \
+		  --circ $SUB_OUTPUT_DIR/CIRI2/$i/out.ciri
+done
+
+### Single-end mRNA-seq
+for fastq_file in $(cat $SE_RNA_SEQ_META)
+do
+mkdir -p $SUB_OUTPUT_DIR/CIRI2/${fastq_file}/Alignment/
+mkdir -p $SUB_OUTPUT_DIR/CIRI2/${fastq_file}/gene/
+R1=${fastq_file}
+echo $R1
+$hisat2 -p $THREADS --dta -x $BTA_REFERENCE/ht2_index/btau9_tran -U $INPUT_DIR/$R1.fastq.gz | $samtools view -hbuS - | \
+$samtools sort -o $SUB_OUTPUT_DIR/CIRI2/${R1}/Alignment/${R1}.bam
+# Assemble
+$stringtie $SUB_OUTPUT_DIR/CIRI2/${R1}/Alignment/${R1}.bam -p $THREADS \
+-G $ARS_UCD_GTF -o $SUB_OUTPUT_DIR/CIRI2/${R1}/gene/${R1}.gtf \
+-l ${R1} $SUB_OUTPUT_DIR/CIRI2/${R1}/Alignment/${R1}.bam
+done
+
+for bam_file in $(cat $SE_RNA_SEQ_META)
+do
+echo $bam_file
+mkdir -p $SUB_OUTPUT_DIR/CIRI2/ballgown/$bam_file
+stringtie -e -B -p $THREADS -G $ARS_UCD_GTF \
+-o $SUB_OUTPUT_DIR/CIRI2/ballgown/$bam_file/${bam_file}.gtf $SUB_OUTPUT_DIR/CIRI2/${bam_file}/Alignment/$bam_file.bam
+done
+python $SCRIPTS_DIR/getTPM.py -i $SUB_OUTPUT_DIR/CIRI2/ballgown/ \
+-g $SUB_OUTPUT_DIR/CIRI2/gene_tpm_matrix.csv -t $SUB_OUTPUT_DIR/CIRI2/transcript_tpm_matrix.csv
 
 
 ######################################

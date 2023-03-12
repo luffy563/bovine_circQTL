@@ -1,7 +1,11 @@
 on:
   push:
     branches: [main]
+<<<<<<< HEAD
     paths: ['README.md']
+=======
+    paths: ['foo.md']
+>>>>>>> 667ee48fdb92b7b7de634d02f67045f461bedb82
 
 jobs:
   build:
@@ -12,7 +16,11 @@ jobs:
       - run: |
           curl https://raw.githubusercontent.com/ekalinin/github-markdown-toc/0.8.0/gh-md-toc -o gh-md-toc
           chmod a+x gh-md-toc
+<<<<<<< HEAD
           ./gh-md-toc --insert --no-backup --hide-footer README.md
+=======
+          ./gh-md-toc --insert --no-backup --hide-footer foo.md
+>>>>>>> 667ee48fdb92b7b7de634d02f67045f461bedb82
           rm gh-md-toc
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:

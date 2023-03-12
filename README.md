@@ -17,6 +17,8 @@ Contact: lhf563@nwafu.edu.cn
 BOVINE-circQTL is a code repository for the pipeline of circQTL identification and downstream analysis in bovine muscle
 tissue.
 
+<!--ts-->
+<!--te-->
 
 ## Overview of pipeline
 - 1.genotype_dataset_preprocess

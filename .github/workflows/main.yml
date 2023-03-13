@@ -83,7 +83,11 @@ jobs:
             git config --global user.email "action@github.com"
             git commit -m "create clone count badge"
           fi
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4.2.3
 
+        
       - name: Push
         uses: ad-m/github-push-action@master
         with:

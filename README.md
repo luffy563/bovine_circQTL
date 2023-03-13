@@ -57,6 +57,7 @@ results were merged in this step.
   
   CircQTL and eQTL were both identified by [MatrixEQTL][MatrixEQTL] in R basic environment. Furthermore, the functional genomic region and phenotype enrichment analysis was also carried out. 
 - 6.trans-circQTL
+
   Substantial trans-circQTLs were found in this study, so the preliminary investigation of characteristic of tran-circQTL was involved in this step.
 - 7.ABS_events
   

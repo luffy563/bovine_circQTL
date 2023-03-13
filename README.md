@@ -70,8 +70,8 @@ we also investigated the distribution of circQTLs within binding sites and then 
 and secondary structure through altering the genotype of circQTLs witinin circRNAs.
 
 ## Config
-- btau9.yml:
-- CM_config.ini: config file of [CircMarker][CircMarker], which contains reference genome fasta file, annotation file, reads1/2, and other required or optional parameters. Of which, Reference, GTF, Reads1/2, and options in Parameter section is important and required.
+- btau9.yml: a YAML-formated config file for [CIRIquant][CIRIquant] to find software and reference needed
+- CM_config.ini: config file of [CircMarker][CircMarker], which contains path of reference genome fasta file, annotation file, reads1/2, and other required or optional parameters. Of which, Reference, GTF, Reads1/2, and options in Parameter section is important and required.
 
 ## Required scripts
 ### Python scripts

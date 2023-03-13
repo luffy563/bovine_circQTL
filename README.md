@@ -6,6 +6,7 @@
 ![](https://img.shields.io/badge/matplotlib-3.3.3-blue)
 [![](https://img.shields.io/badge/R-4.1.0-orange)](https://cloud.r-project.org/src/base/R-4/R-4.1.0.tar.gz)
 ![](https://img.shields.io/badge/ggplot2-3.3.5-red)
+[![GitHub Clones](https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://gist.githubusercontent.com/luffy563/11b51936f27ed9661aceae3088fc3b98/raw/clone.json&logo=github)](https://github.com/MShawon/github-clone-count-badge)
 
 Copyright (C) 2020-2023
 Northwest A&F University,

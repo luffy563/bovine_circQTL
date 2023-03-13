@@ -24,38 +24,13 @@ tissue.
 * [BOVINE-circQTL (Breed-specific circQTL regulatory networks in bovine muscle tissue: Insights into circRNA biogenesis and multifunctional mechanisms)](#bovine-circqtl-breed-specific-circqtl-regulatory-networks-in-bovine-muscle-tissue-insights-into-circrna-biogenesis-and-multifunctional-mechanisms)
 * [Table of contents](#table-of-contents)
    * [Overview of pipeline](#overview-of-pipeline)
-   * [1.genotype_dataset_preprocess](#1genotype_dataset_preprocess)
-      * [1.1 format genotype dataset](#11-format-genotype-dataset)
-      * [1.1 impute genotype](#11-impute-genotype)
-      * [1.1 remap genotype dataset](#11-remap-genotype-dataset)
-   * [2.RNA_seq_datasets_preprocess](#2rna_seq_datasets_preprocess)
-      * [2.1 quality control](#21-quality-control)
-      * [2.2 circRNA and mRNA identification](#22-circrna-and-mrna-identification)
-   * [3.summary_statistics_genotype](#3summary_statistics_genotype)
-      * [3.1 summary statistics](#31-summary-statistics)
-      * [3.2 combine genotype datasets](#32-combine-genotype-datasets)
-   * [4.summary_statistics_rnaseq](#4summary_statistics_rnaseq)
-      * [4.1 combine software results](#41-combine-software-results)
-   * [5.matrixeqtl](#5matrixeqtl)
-      * [5.1 identify circQTL](#51-identify-circqtl)
-      * [5.2 identify eQTL](#52-identify-eqtl)
-      * [5.3 enrichment analysis](#53-enrichment-analysis)
-   * [6.trans-circQTL](#6trans-circqtl)
-      * [6.1 circRNA-mRNA relationship](#61-circrna-mrna-relationship)
-   * [7.ABS_events](#7abs_events)
-      * [7.1 ABS events construction](#71-abs-events-construction)
-      * [7.2 Alu-like elements identification](#72-alu-like-elements-identification)
-      * [7.3 intron-ABS relationship](#73-intron-abs-relationship)
-      * [7.4 Alu-like ABS relationship](#74-alu-like-abs-relationship)
-      * [7.5 Alu-like effect](#75-alu-like-effect)
-   * [8.circRNA_functions](#8circrna_functions)
-      * [8.0 miRNA binding prediction](#80-mirna-binding-prediction)
-      * [8.1 RBP binding prediction](#81-rbp-binding-prediction)
-      * [8.2 circ-miRNA network](#82-circ-mirna-network)
-      * [8.3 circQTL effect](#83-circqtl-effect)
+   * [Config](#config)
+   * [Required scripts](#required-scripts)
+      * [Python scripts](#python-scripts)
+      * [R scripts](#r-scripts)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: luffy, at: Mon Mar 13 10:28:59 CST 2023 -->
+<!-- Added by: luffy, at: Mon Mar 13 11:23:49 CST 2023 -->
 
 <!--te-->
 ***
@@ -63,7 +38,7 @@ tissue.
 ## Overview of pipeline
 - 1.genotype_dataset_preprocess
 
-    Raw genotype datasets contain vcf file from BGVD ([Bovine Genome Variant Database](http://animal.omics.pro/code/index.php/BosVar)) 
+    Raw genotype datasets contain vcf file from BGVD ([Bovine Genome Variant Database][BGVD]) 
 and two SNP-chip datasets ([GSE95358](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE95358) and [GSE100038](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE100038)).
 This preprocess step includes format, imputation, and remap (from btau 6 to btau 9 genome assembly).
 - 2.RNA_seq_datasets_preprocess
@@ -75,17 +50,17 @@ This preprocess step includes format, imputation, and remap (from btau 6 to btau
   This step includes summary statistics report of genotype datasets and combination of different genotype datasets from various sources.
 - 4.summary_statistics_rnaseq
   
-  CircRNA identification was implemented by different software, including CircMarker, CIRI2, and circRNAfinder, and then the detection
+  CircRNA identification was implemented by different software, including [CircMarker][CircMarker], [CIRI2][CIRI2], and [circRNAfinder][circRNAfinder], and then the detection
 results were merged in this step.
 - 5.matrixeqtl
   
-  CircQTL and eQTL were both identified by MatrixEQTL in R basic environment. Furthermore, the functional genomic region and phenotype enrichment analysis was also carried out. 
+  CircQTL and eQTL were both identified by [MatrixEQTL][MatrixEQTL] in R basic environment. Furthermore, the functional genomic region and phenotype enrichment analysis was also carried out. 
 - 6.trans-circQTL
   Substantial trans-circQTLs were found in this study, so the preliminary investigation of characteristic of tran-circQTL was involved in this step.
 - 7.ABS_events
   
   First, the ABS (alternativ back-splicing) events profile was constructed to investigate the overall patterns and divergence among breeds. 
-Then, to explore the association of ABS events (intron length and number/pairing ability of SINE/Alu-like elements) with flanking circQTL mediated by cis-elements (SINE), we extracted the flanking SINE elements closer to
+Then, to explore the association of ABS events (intron length and number/pairing ability of SINE (Short interspersed nuclear elements) /Alu-like elements) with flanking circQTL mediated by cis-elements (SINE), we extracted the flanking SINE elements closer to
 ABS-circRNAs.
 - 8.circRNA_functions
   
@@ -94,40 +69,37 @@ were predicted, by which we constructed the circRNA-miRNA/RBP interaction networ
 we also investigated the distribution of circQTLs within binding sites and then analyzed the change of binding ability, enrichment degree,
 and secondary structure through altering the genotype of circQTLs witinin circRNAs.
 
-## 1.genotype_dataset_preprocess
-### 1.1 format genotype dataset
-### 1.1 impute genotype
-### 1.1 remap genotype dataset
+## Config
+- btau9.yml:
+- CM_config.ini: config file of [CircMarker][CircMarker], which contains reference genome fasta file, annotation file, reads1/2, and other required or optional parameters. Of which, Reference, GTF, Reads1/2, and options in Parameter section is important and required.
 
-## 2.RNA_seq_datasets_preprocess
-### 2.1 quality control
-### 2.2 circRNA and mRNA identification
+## Required scripts
+### Python scripts
+- extract_exons.py: This file is part of [HISAT 2][HISAT 2] for extracting exons from gtf annotation file.
+- extract_splice_sites.py: This file is part of [HISAT 2][HISAT 2] for extracting splice sites from gtf annotation file.
+- getTPM.py: Extract the TPM quantity matrix at genes and transcripts levels from the output generated by `stringtie -e`.
+- summary_rna_seq.py: To merge circRNA detection results and then report the summary statistics
+- extract_flanking_introns.py: Extract flanking introns closer to ABS-circRNAs
+- get_seed_region.py: Get the seed region of miRNAs
+- extract_random_seq_bed.py: Generate the custom number of random sequences from the bovine genome (ARS-UCD1.2 genome assembly) according
+to the specific normal distribution of sequence length.
+- filt.py: Extract the specific sequence set from a fasta file based on a sequence ID list.
+### R scripts
+- combine.r: Combination of BGVD genotype and two SNP-chip sets
+- prep_quant.r: convert raw genome coordinate (0-based or 1-based) to 0-based for [CIRIquant][CIRIquant] calibration
+- conversion.r: convert raw genome coordinate (0-based or 1-based) to 0-based
+- annotation.r: merge annotated circRNA list (circularRNA_known.txt) by the known circRNA
 
-## 3.summary_statistics_genotype
-### 3.1 summary statistics
-### 3.2 combine genotype datasets
 
-## 4.summary_statistics_rnaseq
-### 4.1 combine software results
-
-## 5.matrixeqtl
-### 5.1 identify circQTL
-### 5.2 identify eQTL
-### 5.3 enrichment analysis
-
-## 6.trans-circQTL
-### 6.1 circRNA-mRNA relationship
-
-## 7.ABS_events
-### 7.1 ABS events construction
-### 7.2 Alu-like elements identification
-### 7.3 intron-ABS relationship
-### 7.4 Alu-like ABS relationship
-### 7.5 Alu-like effect
-
-## 8.circRNA_functions
-### 8.0 miRNA binding prediction
-### 8.1 RBP binding prediction
-### 8.2 circ-miRNA network
-### 8.3 circQTL effect
-
+[HISAT 2]:http://daehwankimlab.github.io/hisat2/
+[CIRCexplorer2]: https://circexplorer2.readthedocs.io/en/latest/
+[CIRI2]: https://sourceforge.net/projects/ciri/files/CIRI2/
+[CIRIquant]: https://github.com/bioinfo-biols/CIRIquant
+[CircMarker]:https://github.com/lxwgcool/CircMarker
+[circRNAfinder]:https://github.com/bioxfu/circRNAFinder
+[KNIFE]: https://github.com/blawney/knife_circ_rna
+[segemehl]: https://www.bioinf.uni-leipzig.de/Software/segemehl/
+[MatrixEQTL]:https://github.com/andreyshabalin/MatrixEQTL
+[circBase]: http://www.circbase.org/
+[circAtlas]: http://circatlas.biols.ac.cn/
+[BGVD]: http://animal.omics.pro/code/index.php/BosVar

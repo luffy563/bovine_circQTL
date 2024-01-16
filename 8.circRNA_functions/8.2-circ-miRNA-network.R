@@ -11,10 +11,13 @@ library(wordcloud2)
 ############################################################################################################
 working_dir <- "path_to_your_working_dir"
 circRNAprofiler_dir<-paste(working_dir,'output/RBPpred/predCirc',sep='/')
-all_RNA_seq_file='./SRR_list_CIRI.txt'
+all_RNA_seq_file='./config/SRR_list_CIRI.txt'
 output_dir <- paste(working_dir,'./output/ceRNA_network',sep='/')
 setwd(circRNAprofiler_dir)
-dir.create(output_dir)
+if (!dir.exists(output_dir)){
+  dir.create(output_dir)
+  
+}
 # Detect cores and initialize that in local computer
 no_cores <- 3
 cl <- makeCluster(no_cores)
@@ -39,45 +42,47 @@ colnames(motif_data)<-c("motif","rbp")
 RBP_data<-merge(RBP_data,RBP_data_count,by="id")
 head(RBP_data)
 all_rbp<-unique(unlist(strsplit(motif_data$rbp,",")))
-RBP_stat_coount<-RBP_data[,c("id","gene","length")]
+RBP_stat_count<-RBP_data[,c("id","gene","length")]
 for (i in 1:length(all_rbp)){
    # i=1
    rbp<-all_rbp[i]
    rbp_random_count<-mergedmotifsRFTS_circ$count[mergedmotifsRFTS_circ$id==rbp]
    eachrbp_motifs<-motif_data$motif[!is.na(str_match(motif_data$rbp,rbp))]
    if (length(eachrbp_motifs)==1){
-      RBP_stat_coount[,rbp]<-RBP_data[,eachrbp_motifs]/RBP_stat_coount[,"length"]/rbp_random_count
+     RBP_stat_count[,rbp]<-RBP_data[,eachrbp_motifs]/RBP_stat_count[,"length"]/rbp_random_count
    } else{
-      RBP_stat_coount[,rbp]<-rowSums(RBP_data[,eachrbp_motifs])/RBP_stat_coount[,"length"]/rbp_random_count
+     RBP_stat_count[,rbp]<-rowSums(RBP_data[,eachrbp_motifs])/RBP_stat_count[,"length"]/rbp_random_count
    }
 }
-RBP_stat_coount<-RBP_stat_coount[rowSums(RBP_stat_coount[,all_rbp])>0,]
+RBP_stat_count<-RBP_stat_count[rowSums(RBP_stat_count[,all_rbp])>0,]
 ## alt vs ref
-RBP_stat_coount_ref<-RBP_stat_coount[unlist(lapply(alt_genotype_circseq$id[alt_genotype_circseq$isconvert=="alt"],function(x){which(RBP_stat_coount$id==x)})),]
-RBP_stat_coount_ref<-subset(RBP_stat_coount_ref,select=-length)
-raw_data_ref<-melt(RBP_stat_coount_ref,id.vars = c("id","gene"),
+alt_genotype_circseq<-read.table('./alt_genotype_circseq.txt',header = T,sep="\t")
+RBP_stat_count_ref<-RBP_stat_count[unlist(lapply(alt_genotype_circseq$id[alt_genotype_circseq$isconvert=="ref"],function(x){which(RBP_stat_coount$id==x)})),]
+RBP_stat_count_ref<-subset(RBP_stat_count_ref,select=-length)
+raw_data_ref<-melt(RBP_stat_count_ref,id.vars = c("id","gene"),
                variable.name = "RBP",value.name = "count")
 raw_data_ref<-raw_data_ref[,c("id","gene","RBP","count")]
 ## wordCloud
-raw_data_ref<-raw_data_ref[raw_data_ref$count>0,]
+raw_data_ref<-raw_data_ref[raw_data_ref$count>0 & !is.na(raw_data_ref$id),]
 rbp_freq_ref<-data.frame("RBP"=raw_data_ref[,c("RBP")])
 rbp_freq_ref$count<-1
 rbp_freq_ref<-data.frame(rbp_freq_ref%>%group_by(RBP)%>%summarize(count=n()))
 colnames(rbp_freq_ref)<-c('id','count')
+
 ##
-RBP_stat_coount_alt<-RBP_stat_coount[unlist(lapply(alt_genotype_circseq$id[alt_genotype_circseq$isconvert=="alt"],function(x){which(RBP_stat_coount$id==x)})),]
-RBP_stat_coount_alt<-subset(RBP_stat_coount_alt,select=-length)
-raw_data_alt<-melt(RBP_stat_coount_alt,id.vars = c("id","gene"),
+RBP_stat_count_alt<-RBP_stat_count[unlist(lapply(alt_genotype_circseq$id[alt_genotype_circseq$isconvert=="alt"],function(x){which(RBP_stat_coount$id==x)})),]
+RBP_stat_count_alt<-subset(RBP_stat_count_alt,select=-length)
+raw_data_alt<-melt(RBP_stat_count_alt,id.vars = c("id","gene"),
                    variable.name = "RBP",value.name = "count")
 raw_data_alt<-raw_data_alt[,c("id","gene","RBP","count")]
 ## wordCloud
-raw_data_alt<-raw_data_alt[raw_data_alt$count>0,]
+raw_data_alt<-raw_data_alt[raw_data_alt$count>0& !is.na(raw_data_alt$id),]
 rbp_freq_alt<-data.frame("RBP"=raw_data_alt[,c("RBP")])
 rbp_freq_alt$count<-1
 rbp_freq_alt<-data.frame(rbp_freq_alt%>%group_by(RBP)%>%summarize(count=n()))
 colnames(rbp_freq_alt)<-c('id','count')
-rbp_freq_alt$motif<-"AAAACC"
-rbp_freq_ref$motif<-"AAAACC"
+rbp_freq_alt$motif<-"AAAACC" # where this motif is not meaningful only as a Placeholder
+rbp_freq_ref$motif<-"AAAACC" # where this motif is not meaningful only as a Placeholder
 #####################################
 ## Figure S18A
 #####################################
@@ -151,9 +156,9 @@ ggplot(rbp_ref_alt_data[idx,])+geom_boxplot(aes(x=RBP,y=count,fill=geno),width=0
          legend.text = element_text(size=16))
 
 #############################################################################################
-RBP_stat_coount<-RBP_stat_coount[!is.na(RBP_stat_coount$id),]
-RBP_stat_coount<-subset(RBP_stat_coount,select=-length)
-raw_data<-melt(RBP_stat_coount,id.vars = c("id","gene"),
+RBP_stat_count<-RBP_stat_count[!is.na(RBP_stat_count$id),]
+RBP_stat_count<-subset(RBP_stat_count,select=-length)
+raw_data<-melt(RBP_stat_count,id.vars = c("id","gene"),
                 variable.name = "RBP",value.name = "count")
 
 raw_data<-raw_data[,c("id","gene","RBP","count")]
@@ -171,10 +176,10 @@ rbp_freq<-rbp_freq[order(rbp_freq$freq,decreasing = T),]
 #####################################
 wordcloud2(rbp_freq)
 
-raw_data_filt<-raw_data
-raw_data<-raw_data_filt[raw_data_filt$count>1,]
+# raw_data_filt<-raw_data
+raw_data_filt<-raw_data[raw_data$count>=2,]
 # dim(raw_data)
-edge_data<-raw_data[,c("id","RBP","count")]
+edge_data<-raw_data_filt[,c("id","RBP","count")]
 edge_data$type<-"RBP binding"
 # dim(raw_data)
 
@@ -210,8 +215,9 @@ summary(deg)
 V(net)$label[V(net)$type=="RBP"]<-names(V(net)[V(net)$type=="RBP"])
 V(net)$label[V(net)$type=="circRNA"] <- NA
 V(net)$group<-"RBP"
-V(net)$group[V(net)$type=="circRNA"&deg<=2]<-"lower degree"
-V(net)$group[V(net)$type=="circRNA"&deg>2]<-"higher degree"
+degree_threshold<-quantile(deg,0.5)
+V(net)$group[V(net)$type=="circRNA"&deg<=degree_threshold]<-"lower degree"
+V(net)$group[V(net)$type=="circRNA"&deg>degree_threshold]<-"higher degree"
 unique(V(net)$group)
 # Set edge width based on weight:
 E(net)$width <- 0.01
@@ -234,27 +240,6 @@ V(net)$label.cex=log10(deg+1)*0.5
 V(net)$label.color="black"
 V(net)$frame.color <- "white"
 E(net)$arrow.mode <- 0
-# plot(net,edge.curved=.1)
-# legend(x=-1.5, y=-0.5, c("circRNA","RBP"), pch=21,
-       # col="#777777", pt.bg=colrs, pt.cex=2, cex=.8, bty="n", ncol=1)
-
-# ## layout_nicely
-# l<-layout_nicely(net,weights=log2(E(net)$count*1))
-# plot(net,edge.curved=.1,layout=l,arrow.mode=0,edge.width=.01)
-# ##
-# tkid <- tkplot(net) #tkid is the id of the tkplot that will open
-# l <- tkplot.getcoords(tkid) # grab the coordinates from tkplot
-# plot(net, layout=l)
-
-# ## Fruchterman-Reingold layout
-# l <- layout_with_fr(net,niter=50,weights=log2(E(net)$count*1))
-# plot(net,layout=l,margin=c(0,0,0,0),arrow.mode=0,edge.width=.01
-     # )
-
-
-# ## layout_with_graphopt
-# l <- layout_with_graphopt(net,charge=0.02)
-# plot(net, layout=l,edge.color=edge.col,)
 
 ##
 library(qgraph)
@@ -263,15 +248,15 @@ l <- qgraph.layout.fruchtermanreingold(seq(1,length(e[,1])),vcount=vcount(net),
          area=8*(vcount(net)^2),repulse.rad=(vcount(net)^3.1))
 # plot(net, layout=l)
 
-# Community detection (by optimizing modularity over partitions):
-clp <- cluster_optimal(net)
-clp_1<-cluster_edge_betweenness(net,directed = F)
+## Community detection (by optimizing modularity over partitions):
+# clp <- cluster_optimal(net)
+# clp_1<-cluster_edge_betweenness(net,directed = F)
 clp<-cluster_infomap(net,modularity = T,nb.trials = 10)
 class(clp)
 # dendPlot(clp, mode="hclust")
 modularity(clp) 
-compare(clp_1, clp, method="rand")
-compare(membership(sg), membership(le))
+# compare(clp_1, clp, method="rand")
+# compare(membership(sg), membership(le))
 # Community detection returns an object of class "communities"
 # which igraph knows how to plot:
 # plot(clp, net,layout=l)
@@ -320,16 +305,14 @@ library(org.Bt.eg.db)
 ## Figure 7C
 #####################################
 ##  GO and KEGG enrichment of different degrees or community circRNA host genes
-degree_circRNA_list<-names(V(net)[V(net)$group=="higher degree"])
-community_circRNA_list<-names(V(net)[V(net)$community>22&V(net)$type=="circRNA"])
+degree_circRNA_list<-names(V(net)[V(net)$group=="lower degree"])
+community_circRNA_list<-names(V(net)[V(net)$community<=22&V(net)$type=="circRNA"])
 
 # raw_data[raw_data$count>1]
-hostgene_list<-unlist(lapply(degree_circRNA_list,function(x){strsplit(x,":")[[1]][1]}))
-hostgene_list<-unlist(lapply(community_circRNA_list,function(x){strsplit(x,":")[[1]][1]}))
+hostgene_list<-unique(unlist(lapply(degree_circRNA_list,function(x){strsplit(x,":")[[1]][1]})))
+hostgene_list<-unique(unlist(lapply(community_circRNA_list,function(x){strsplit(x,":")[[1]][1]})))
 
-hostgene_list
-# rbp_freq_golist<-rbp_freq$word[rbp_freq$freq>=7000]
-# enrichGO(rbp_freq_golist,OrgDb = "bta")
+##
 eg_down = bitr(hostgene_list, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Bt.eg.db")
 id=eg_down$ENTREZID
 
@@ -339,11 +322,11 @@ ego_BP <- enrichGO(
    OrgDb   = org.Bt.eg.db,
    ont     = "BP",
    pAdjustMethod = "BH",
-   pvalueCutoff  = 0.05,
-   qvalueCutoff  = 0.05,
+   pvalueCutoff  = 0.1,
+   qvalueCutoff  = 1,
    readable      = TRUE) #GO enrichment analysis
 
-BP_res <- subset(ego_BP@result,select=c('Description','geneID','qvalue'))
+BP_res <- subset(ego_BP@result)
 BP <- BP_res[1:10,]
 # BP_dot=dotplot(ego_BP,showCategory=10,title="Enrichment GO Top10") #dotplot
 # BP_bar=barplot(ego_BP,showCategory=10,title="Enrichment GO Top10") #barplot
@@ -355,12 +338,12 @@ ego_MF <- enrichGO(
    OrgDb   = org.Bt.eg.db,
    ont     = "MF",
    pAdjustMethod = "BH",
-   pvalueCutoff  = 0.05,
-   qvalueCutoff  = 0.05,
+   pvalueCutoff  = 0.1,
+   qvalueCutoff  = 1,
    readable      = TRUE) #GO enrichment analysis
 # MF_dot=dotplot(ego_MF,showCategory=10,title="Enrichment GO Top10") #dotplot
 # MF_bar=barplot(ego_MF,showCategory=10,title="Enrichment GO Top10") #barplot
-MF_res <- subset(ego_MF@result,select=c('Description','geneID','qvalue'))
+MF_res <- subset(ego_MF@result)
 MF <- MF_res[1:10,]
 ego_CC <- enrichGO(
    gene  = id,
@@ -368,24 +351,28 @@ ego_CC <- enrichGO(
    OrgDb   = org.Bt.eg.db,
    ont     = "CC",
    pAdjustMethod = "BH",
-   pvalueCutoff  = 0.05,
-   qvalueCutoff  = 0.05,
+   pvalueCutoff  = 0.1,
+   qvalueCutoff  = 1,
    readable      = TRUE) #GO enrichment analysis
 # CC=dotplot(ego_CC,showCategory=10,title="Enrichment GO Top10") #dotplot
 # CC_bar=barplot(ego_CC,showCategory=10,title="Enrichment GO Top10") #barplot
-CC_res <- subset(ego_CC@result,select=c('Description','geneID','qvalue'))
+CC_res <- subset(ego_CC@result)
 CC <- CC_res[1:10,]
 
 #
 GO_result_total <- rbind(BP_res,MF_res,CC_res)
+
 GO_result_total$GO_term<-rep(c('BP','MF','CC'),c(length(BP_res$Description),length(MF_res$Description),length(CC_res$Description)))
-# write.csv(GO_result_total,paste(output,'/','cis-genes for lncRNA',' GO enrichment result.csv',sep=''))
+write.csv(GO_result_total,paste0(output_dir,'/All GO enrichment result for host circRNA genes with lower community.csv'))
 # GO enrichment result of Top10
 GO_result<-rbind(BP,MF,CC)
 
 GO_result$GO_term<-rep(c('BP','MF','CC'),rep(10,3))
-GO_result$GO_term_1<-rep(c('BP','MF','CC'),rep(10,3))
+write.csv(GO_result,paste0(output_dir,'/GO enrichment result for host circRNA genes with lower community.csv'))
+
+# GO_result$GO_term_1<-rep(c('BP','MF','CC'),rep(10,3))
 GO_result<-GO_result[!is.na(GO_result$qvalue),]
+##
 library(stringr)
 GO_result$GeneNumber<-str_count(GO_result$geneID,'/')
 labels<-GO_result[GO_result$`-log10(qvalue)`>=-log10(0.05),]
@@ -431,9 +418,9 @@ rbp_freq<-rbp_freq[order(rbp_freq$freq,decreasing = T),]
 wordcloud2(rbp_freq)
 ## miRNA target gene prediction
 top10_miRNA<-rbp_freq$word[1:10]
-top10_miRNA_family<-unlist(lapply(top10_miRNA,function(x){paste0(strsplit(x,'-',fixed = T)[[1]][2:3],collapse = '-')}))
+top10_miRNA_family<-unique(unlist(lapply(top10_miRNA,function(x){paste0(strsplit(x,'-',fixed = T)[[1]][2:3],collapse = '-')})))
 # import prediction results from targetScan database
-predict_res<-read.table('./prediction/Predicted_Targets_Info.default_predictions.txt',sep='\t',header = T)
+predict_res<-read.table('./../miRNA_prediction/Predicted_Targets_Info.default_predictions.txt',sep='\t',header = T)
 head(predict_res)
 predict_res$miRNA_family<-unlist(lapply(predict_res$miR.Family,function(x){len<-length(strsplit(x,'/')[[1]]);
    if (len == 1){
@@ -446,9 +433,15 @@ predict_res$miRNA_family<-unlist(lapply(predict_res$miR.Family,function(x){len<-
 #
 idx<-unlist(lapply(top10_miRNA_family, function(x){grep(x,predict_res$miRNA_family,ignore.case = T)}))
 predict_res_filt<-predict_res[idx,]
-predict_res_filt$PCT<-as.numeric(predict_res_filt$PCT,)
+predict_res_filt$PCT<-as.numeric(predict_res_filt$PCT)
 predict_res_final<-predict_res_filt[predict_res_filt$Species.ID==9913&!is.na(predict_res_filt$PCT)&
                                        predict_res_filt$Seed.match!="6-mer"&predict_res_filt$PCT>0.5,]
+write.table(predict_res_final,paste0(output_dir,'/miRNA-mRNA pair for top 10 miRNA.txt'),
+            quote = F,row.names = F,sep = "\t")
+idx<-matchIndex(edge_data$miRNA_name,top10_miRNA)
+edge_res_final<-edge_data[idx,]
+write.table(edge_res_final,paste0(output_dir,'/miRNA-circRNA pair for top 10 miRNA.txt'),
+            quote = F,row.names = F,sep = "\t")
 target_mRNA_symbol<-unique(predict_res_final$Gene.Symbol)
 # Go enrichment analysis
 target_mRNA_gene <- bitr(target_mRNA_symbol, fromType = "SYMBOL",
@@ -495,12 +488,14 @@ CC_res <- subset(ego_CC@result,select=c('Description','geneID','qvalue'))
 CC <- CC_res[1:10,]
 
 
-# write.csv(GO_result_total,paste(output,'/','cis-genes for lncRNA',' GO enrichment result.csv',sep=''))
+write.csv(GO_result_total,paste0(output_dir,'/All GO enrichment result for top 10 miRNA target genes.csv',sep=''))
 # GO enrichment result of Top10
 GO_result<-rbind(BP,MF,CC)
 
 GO_result$GO_term<-rep(c('BP','MF','CC'),rep(10,3))
-GO_result$GO_term_1<-rep(c('BP','MF','CC'),rep(10,3))
+# GO_result$GO_term_1<-rep(c('BP','MF','CC'),rep(10,3))
+write.csv(GO_result,paste0(output_dir,'/GO enrichment result for top 10 miRNA target genes.csv',sep=''))
+
 GO_result<-GO_result[!is.na(GO_result$qvalue),]
 library(stringr)
 GO_result$GeneNumber<-str_count(GO_result$geneID,'/')
@@ -580,14 +575,14 @@ l <- qgraph.layout.fruchtermanreingold(seq(1,length(e[,1])),vcount=vcount(net),
 # plot(net, layout=l)
 
 # Community detection (by optimizing modularity over partitions):
-clp <- cluster_optimal(net)
-clp_1<-cluster_edge_betweenness(net,directed = F)
+# clp <- cluster_optimal(net)
+# clp_1<-cluster_edge_betweenness(net,directed = F)
 clp<-cluster_infomap(net,modularity = T,nb.trials = 10)
 class(clp)
 # dendPlot(clp, mode="hclust")
 modularity(clp) 
-compare(clp_1, clp, method="rand")
-compare(membership(sg), membership(le))
+# compare(clp_1, clp, method="rand")
+# compare(membership(sg), membership(le))
 # Community detection returns an object of class "communities"
 # which igraph knows how to plot:
 # plot(clp, net,layout=l)
@@ -596,8 +591,8 @@ compare(membership(sg), membership(le))
 
 # We can also plot the communities without relying on their built-in plot:
 V(net)$community <- clp$membership
-colrs <- adjustcolor( c("gray50", "tomato", "gold", "yellowgreen"), alpha=.6)
-plot(net, vertex.color=colrs[V(net)$community])
+# colrs <- adjustcolor( c("gray50", "tomato", "gold", "yellowgreen"), alpha=.6)
+# plot(net, vertex.color=colrs[V(net)$community])
 ##
 library(ggraph)
 V(net)$comm<-membership(clp)
@@ -637,14 +632,14 @@ ggraph(net,layout = l) +
 ## Figure S22
 #####################################
 ##  GO and KEGG enrichment of different degrees or community circRNA host genes
-degree_circRNA_list<-names(V(net)[V(net)$group=="lower degree"])
-community_circRNA_list<-names(V(net)[V(net)$community>44&V(net)$type=="circRNA"])
+degree_circRNA_list<-names(V(net)[V(net)$group=="higher degree"])
+community_circRNA_list<-names(V(net)[V(net)$community<=44&V(net)$type=="circRNA"])
 
 # raw_data[raw_data$count>1]
-hostgene_list<-unlist(lapply(degree_circRNA_list,function(x){strsplit(x,":")[[1]][1]}))
-hostgene_list<-unlist(lapply(community_circRNA_list,function(x){strsplit(x,":")[[1]][1]}))
+hostgene_list<-unique(unlist(lapply(degree_circRNA_list,function(x){strsplit(x,":")[[1]][1]})))
+hostgene_list<-unique(unlist(lapply(community_circRNA_list,function(x){strsplit(x,":")[[1]][1]})))
 
-hostgene_list
+# hostgene_list
 # rbp_freq_golist<-rbp_freq$word[rbp_freq$freq>=7000]
 # enrichGO(rbp_freq_golist,OrgDb = "bta")
 eg_down = bitr(hostgene_list, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Bt.eg.db")
@@ -660,7 +655,7 @@ ego_BP <- enrichGO(
    qvalueCutoff  = 0.05,
    readable      = TRUE) #GO enrichment analysis
 
-BP_res <- subset(ego_BP@result,select=c('Description','geneID','qvalue'))
+BP_res <- subset(ego_BP@result)
 BP <- BP_res[1:10,]
 # BP_dot=dotplot(ego_BP,showCategory=10,title="Enrichment GO Top10") #dotplot
 # BP_bar=barplot(ego_BP,showCategory=10,title="Enrichment GO Top10") #barplot
@@ -677,7 +672,7 @@ ego_MF <- enrichGO(
    readable      = TRUE) #GO enrichment analysis
 # MF_dot=dotplot(ego_MF,showCategory=10,title="Enrichment GO Top10") #dotplot
 # MF_bar=barplot(ego_MF,showCategory=10,title="Enrichment GO Top10") #barplot
-MF_res <- subset(ego_MF@result,select=c('Description','geneID','qvalue'))
+MF_res <- subset(ego_MF@result)
 MF <- MF_res[1:10,]
 ego_CC <- enrichGO(
    gene  = id,
@@ -690,18 +685,20 @@ ego_CC <- enrichGO(
    readable      = TRUE) #GO enrichment analysis
 # CC=dotplot(ego_CC,showCategory=10,title="Enrichment GO Top10") #dotplot
 # CC_bar=barplot(ego_CC,showCategory=10,title="Enrichment GO Top10") #barplot
-CC_res <- subset(ego_CC@result,select=c('Description','geneID','qvalue'))
+CC_res <- subset(ego_CC@result)
 CC <- CC_res[1:10,]
 
 #
 GO_result_total <- rbind(BP_res,MF_res,CC_res)
 GO_result_total$GO_term<-rep(c('BP','MF','CC'),c(length(BP_res$Description),length(MF_res$Description),length(CC_res$Description)))
-# write.csv(GO_result_total,paste(output,'/','cis-genes for lncRNA',' GO enrichment result.csv',sep=''))
+write.csv(GO_result_total,paste(output_dir,'/All GO enrichment result for circRNA host genes with lower community within ceRNA network.csv',sep=''))
 # GO enrichment result of Top10
 GO_result<-rbind(BP,MF,CC)
 
 GO_result$GO_term<-rep(c('BP','MF','CC'),rep(10,3))
-GO_result$GO_term_1<-rep(c('BP','MF','CC'),rep(10,3))
+# GO_result$GO_term_1<-rep(c('BP','MF','CC'),rep(10,3))
+write.csv(GO_result,paste(output_dir,'/GO enrichment result for circRNA host genes with lower community within ceRNA network.csv',sep=''))
+
 GO_result<-GO_result[!is.na(GO_result$qvalue),]
 library(stringr)
 GO_result$GeneNumber<-str_count(GO_result$geneID,'/')

@@ -8,6 +8,8 @@ library(parallel)
 
 ############################################################################################################
 working_dir <- "path_to_your_working_dir"
+# working_dir <- "D:\\work\\master\\coderepoistory\\bovine_circQTL"
+
 base.dir='./output/circQTLs'
 setwd(working_dir)
 
@@ -282,7 +284,7 @@ write.table(circos_data,'./output/circQTLs/hfilt_circQTL-1.data',quote = F,row.n
 
 ## Example of the effect of rs134248710 on chr12:19479415-19482423
 # significant<-read.table('./output/circQTLs/significant_circQTL_log_quant_hfilt.txt',header = T)
-breed_info = read.csv('./SRR_breeds.csv')
+breed_info = read.csv('./config/SRR_breeds.csv')
 circRNA_express<-read.csv('./output/circQTLs/log_anno_array_hfilt_3soft_anno.csv')
 
 #####################################
@@ -472,7 +474,7 @@ ego_BP <- enrichGO(
    qvalueCutoff  = 0.05,
    readable      = TRUE) #GO enrichment analysis
 
-BP <- subset(ego_BP@result,select=c('Description','qvalue'))
+BP <- subset(ego_BP@result)
 BP <- BP[1:10,]
 
 ego_MF <- enrichGO(
@@ -485,7 +487,7 @@ ego_MF <- enrichGO(
    qvalueCutoff  = 0.05,
    readable      = TRUE) #GO enrichment analysis
 
-MF <- subset(ego_MF@result,select=c('Description','qvalue'))
+MF <- subset(ego_MF@result)
 MF <- MF[1:10,]
 ego_CC <- enrichGO(
    gene  = id,
@@ -497,13 +499,14 @@ ego_CC <- enrichGO(
    qvalueCutoff  = 0.05,
    readable      = TRUE) #GO enrichment analysis
 
-CC <- subset(ego_CC@result,select=c('Description','qvalue'))
+CC <- subset(ego_CC@result)
 CC <- CC[1:10,]
 
 # GO enrichment result of Top10
 GO_result<-rbind(BP,MF,CC)
 GO_result$GO_term<-rep(c('BP','MF','CC'),rep(10,3))
-GO_result$GO_term_1<-rep(c('BP','MF','CC'),rep(10,3))
+# 
+write.table(GO_result,'./output/circQTLs/Go enrichment analysis for host gene with intron-circQTLs.txt',quote = F,row.names = F,sep = "\t")
 GO_result$'-log10(qvalue)'= (-1)*log10(GO_result$qvalue)
 # pdf(paste(output, '/',name," Go enrichment analysis.pdf", sep=""),width=12,height=12)
 ggplot(GO_result,mapping = aes(x=reorder(Description,-log10(qvalue)),y=-log10(qvalue),fill=GO_term))+
@@ -525,8 +528,11 @@ kk <- enrichKEGG(gene = id,
                  minGSSize = 10,
                  maxGSSize = 500,
                  pvalueCutoff = 0.05)
-KEGG_result<-subset(kk@result,select=c('Description','qvalue'))[1:10,]
+KEGG_result<-subset(kk@result)[1:10,]
+write.table(KEGG_result,'./output/circQTLs/KEGG enrichment analysis for host gene with intron-circQTLs.txt',quote = F,row.names = F,sep = "\t")
+
 KEGG_result$'-log10(qvalue)'= (-1)*log10(KEGG_result$qvalue)
+
 # pdf(paste(output, '/',name," KEGG enrichment analysis.pdf", sep=""),width=12,height=12)
 tiff('C:/Users/luffy/Desktop/figures-2021.6.29/KEGG analysis of ss mRNA within circQTLs.tiff',width = 1500,height = 1000,res = 150)
 ggplot(KEGG_result)+
